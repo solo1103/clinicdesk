@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Sidebar from '../../components/Sidebar'
 import Topbar from '../../components/Topbar'
@@ -23,7 +23,7 @@ const EMPTY_ROW = () => ({
   instructions: ''
 })
 
-export default function ConsultationPage() {
+function ConsultationContent() {
   const router = useRouter()
   const { medicines, bookings, setBookings, 
           consultations, setConsultations } = useApp()
@@ -569,5 +569,21 @@ const bookingId   = searchParams.get('bookingId') || ''
         </div>
       )}
     </div>
+  )
+}
+export default function ConsultationPage() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        display:'flex', alignItems:'center',
+        justifyContent:'center', minHeight:'100vh',
+        background:'#F4F9F9', fontSize:'1rem',
+        color:'#5B7C85'
+      }}>
+        Loading...
+      </div>
+    }>
+      <ConsultationContent />
+    </Suspense>
   )
 }
