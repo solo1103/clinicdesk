@@ -1,26 +1,163 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-clinic-navy: #013a47;
+  --color-clinic-teal: #028090;
+  --color-clinic-mint: #02c39a;
+  --color-clinic-bg: #f4f9f9;
+  --color-clinic-text: #12333a;
+  --color-clinic-muted: #5b7c85;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-clinic-bg);
+  color: var(--color-clinic-text);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+/* ── RESPONSIVE LAYOUT ── */
+.page-main {
+  margin-left: 240px;
+  flex: 1;
+  background: #F4F9F9;
+  min-height: 100vh;
+}
+
+/* Stats grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* Scrollable tables on mobile */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── MOBILE (phones) ── */
+@media (max-width: 768px) {
+  .page-main {
+    margin-left: 0 !important;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .hide-mobile {
+    display: none !important;
+  }
+  .page-padding {
+    padding: 12px !important;
+  }
+}
+
+/* ── TABLET ── */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .page-main {
+    margin-left: 240px;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ── PRINT (for prescriptions) ── */
+@media print {
+  .sidebar,
+  .topbar,
+  .no-print {
+    display: none !important;
+  }
+  .page-main {
+    margin-left: 0 !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+}
+/* ── SIDEBAR ── */
+.sidebar-nav-wrap {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 240px;
+  z-index: 100;
+  overflow-y: auto;
+}
+
+/* ── MAIN CONTENT ── */
+.page-main {
+  margin-left: 240px;
+  min-height: 100vh;
+  background: #F4F9F9;
+}
+
+/* ── MOBILE ── */
+@media (max-width: 768px) {
+
+  /* Hide sidebar by default on mobile */
+  .sidebar-nav-wrap {
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+
+  /* Show when open class added */
+  .sidebar-nav-wrap.sidebar-open {
+    transform: translateX(0);
+  }
+
+  /* Full width content on mobile */
+  .page-main {
+    margin-left: 0 !important;
+  }
+
+  /* Smaller padding on mobile */
+  .page-main > div[style*="padding"] {
+    padding: 12px !important;
+  }
+
+  /* Stack grids on mobile */
+  .grid-auto {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Make tables scrollable */
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ── TABLET ── */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .page-main {
+    margin-left: 240px;
+  }
+}
+
+/* ── DESKTOP — limit max width ── */
+@media (min-width: 1200px) {
+  .page-main > div {
+    max-width: 1100px;
+  }
+}
+
+/* ── PRINT ── */
+@media print {
+  .sidebar-nav-wrap,
+  .topbar-bar,
+  .no-print {
+    display: none !important;
+  }
+  .page-main {
+    margin-left: 0 !important;
+  }
 }
