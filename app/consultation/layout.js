@@ -15,4 +15,8 @@ export default function ConsultationLayout({ children }) {
       <div className="flex min-h-dvh flex-col md:pl-[240px]">{children}</div>
     </div>
   );
+
+  export default function ConsultationLayout({ children }) {
+  return children
 }
+
