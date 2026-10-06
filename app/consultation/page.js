@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Sidebar from '../../components/Sidebar'
 import Topbar from '../../components/Topbar'
 import { useApp } from '../../lib/AppContext'
-import { Suspense } from 'react'
 
 const uid = () => Math.random().toString(36).slice(2,9)
 
