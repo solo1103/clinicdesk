@@ -1,4 +1,6 @@
 'use client'
+export const dynamic = 'force-dynamic'
+
 import { useState } from 'react'
 import Sidebar from '../../components/Sidebar'
 import Topbar from '../../components/Topbar'
@@ -12,318 +14,258 @@ const TYPES = [
 ]
 const CATEGORIES = [
   'Antibiotic','Painkiller','Antacid','Antiallergic',
-  'Vitamin','Diabetes','BP','Thyroid','Steroid',
-  'Antifungal','Antiparasitic','Other'
+  'Vitamin','Diabetes','BP','Thyroid',
+  'Antifungal','Other'
 ]
-
-const EMPTY_FORM = {
-  name:'', strength:'', type:'Tablet',
-  category:'Other', notes:''
+const EMPTY = {
+  name:'',strength:'',type:'Tablet',category:'Other',notes:''
+}
+const TYPE_COLORS = {
+  Tablet:   {bg:'#E8F4FE',color:'#1a5fa6'},
+  Capsule:  {bg:'#E6F7F1',color:'#1a7a50'},
+  Syrup:    {bg:'#FFF4E5',color:'#B06000'},
+  Injection:{bg:'#FFE8E8',color:'#c0392b'},
+  Cream:    {bg:'#F3E8FF',color:'#6b21a8'},
+  Drops:    {bg:'#FFF9E6',color:'#7a5a00'},
+  Inhaler:  {bg:'#E8F4FE',color:'#1a5fa6'},
+  Powder:   {bg:'#F4F4F4',color:'#555'},
 }
 
 export default function MedicinesPage() {
   const { medicines, setMedicines } = useApp()
-  const [sidebarOpen,  setSidebarOpen]  = useState(false)
-  const [showModal,    setShowModal]    = useState(false)
-  const [editId,       setEditId]       = useState(null)
-  const [form,         setForm]         = useState(EMPTY_FORM)
-  const [search,       setSearch]       = useState('')
-  const [catFilter,    setCatFilter]    = useState('')
-  const [typeFilter,   setTypeFilter]   = useState('')
-  const [toast,        setToast]        = useState('')
-  const [bulkText,     setBulkText]     = useState('')
-  const [showBulk,     setShowBulk]     = useState(false)
-  const [deleteConfirm,setDeleteConfirm]= useState(null)
+  const [sidebarOpen,   setSidebarOpen]   = useState(false)
+  const [showModal,     setShowModal]     = useState(false)
+  const [editId,        setEditId]        = useState(null)
+  const [form,          setForm]          = useState(EMPTY)
+  const [search,        setSearch]        = useState('')
+  const [catFilter,     setCatFilter]     = useState('')
+  const [typeFilter,    setTypeFilter]    = useState('')
+  const [toast,         setToast]         = useState('')
+  const [bulkText,      setBulkText]      = useState('')
+  const [showBulk,      setShowBulk]      = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
 
-  const showToast = (msg) => {
-    setToast(msg)
-    setTimeout(() => setToast(''), 2500)
+  const showToast = msg => {
+    setToast(msg); setTimeout(()=>setToast(''),2500)
   }
 
   const openAdd = () => {
-    setEditId(null)
-    setForm(EMPTY_FORM)
-    setShowModal(true)
+    setEditId(null); setForm(EMPTY); setShowModal(true)
   }
-
-  const openEdit = (med) => {
+  const openEdit = med => {
     setEditId(med.id)
     setForm({
-      name:     med.name     || '',
-      strength: med.strength || '',
-      type:     med.type     || 'Tablet',
-      category: med.category || 'Other',
-      notes:    med.notes    || ''
+      name:med.name||'',strength:med.strength||'',
+      type:med.type||'Tablet',
+      category:med.category||'Other',notes:med.notes||''
     })
     setShowModal(true)
   }
-
   const closeModal = () => {
-    setShowModal(false)
-    setEditId(null)
-    setForm(EMPTY_FORM)
+    setShowModal(false); setEditId(null); setForm(EMPTY)
   }
 
   const handleSave = () => {
-    if (!form.name.trim()) {
-      showToast('⚠️ Medicine name is required')
-      return
+    if(!form.name.trim()){
+      showToast('⚠️ Medicine name required'); return
     }
-    if (editId) {
-      setMedicines(medicines.map(m =>
-        m.id === editId ? { ...m, ...form } : m
+    if(editId){
+      setMedicines((medicines||[]).map(m=>
+        m.id===editId?{...m,...form}:m
       ))
       showToast('✅ Medicine updated')
     } else {
-      setMedicines([...medicines, { id: uid(), ...form }])
+      setMedicines([...(medicines||[]),{id:uid(),...form}])
       showToast('✅ Medicine added')
     }
     closeModal()
   }
 
-  const handleDelete = (id) => {
-    setMedicines(medicines.filter(m => m.id !== id))
+  const handleDelete = id => {
+    setMedicines((medicines||[]).filter(m=>m.id!==id))
     setDeleteConfirm(null)
     showToast('🗑 Medicine removed')
   }
 
   const handleBulkAdd = () => {
-    if (!bulkText.trim()) return
-    const lines = bulkText
-      .split('\n')
-      .map(l => l.trim())
-      .filter(Boolean)
-    const newMeds = lines.map(line => {
-      const parts = line.split(',').map(p => p.trim())
-      return {
-        id:       uid(),
-        name:     parts[0] || line,
-        strength: parts[1] || '',
-        type:     parts[2] || 'Tablet',
-        category: parts[3] || 'Other',
-        notes:    ''
-      }
-    })
-    setMedicines([...medicines, ...newMeds])
-    setBulkText('')
-    setShowBulk(false)
+    if(!bulkText.trim()) return
+    const newMeds = bulkText.split('\n')
+      .map(l=>l.trim()).filter(Boolean)
+      .map(line=>{
+        const p = line.split(',').map(x=>x.trim())
+        return {
+          id:uid(),name:p[0]||line,
+          strength:p[1]||'',type:p[2]||'Tablet',
+          category:p[3]||'Other',notes:''
+        }
+      })
+    setMedicines([...(medicines||[]),...newMeds])
+    setBulkText(''); setShowBulk(false)
     showToast(`✅ Added ${newMeds.length} medicines`)
   }
 
-  // Filtered list
-  const filtered = (medicines || []).filter(m => {
+  const filtered = (medicines||[]).filter(m=>{
     const q = search.toLowerCase()
-    const matchQ = !q ||
+    const mQ = !q ||
       m.name?.toLowerCase().includes(q) ||
-      m.strength?.toLowerCase().includes(q) ||
       m.category?.toLowerCase().includes(q)
-    const matchCat  = !catFilter  || m.category === catFilter
-    const matchType = !typeFilter || m.type     === typeFilter
-    return matchQ && matchCat && matchType
+    const mC = !catFilter  || m.category===catFilter
+    const mT = !typeFilter || m.type===typeFilter
+    return mQ && mC && mT
   })
 
-  // Type colors
-  const typeColors = {
-    Tablet:    { bg:'#E8F4FE', color:'#1a5fa6' },
-    Capsule:   { bg:'#E6F7F1', color:'#1a7a50' },
-    Syrup:     { bg:'#FFF4E5', color:'#B06000' },
-    Injection: { bg:'#FFE8E8', color:'#c0392b' },
-    Cream:     { bg:'#F3E8FF', color:'#6b21a8' },
-    Drops:     { bg:'#FFF9E6', color:'#7a5a00' },
-    Inhaler:   { bg:'#E8F4FE', color:'#1a5fa6' },
-    Powder:    { bg:'#F4F4F4', color:'#555'    },
-  }
-
-  // ── Styles ──
-  const card = {
-    background:'white', borderRadius:'10px',
-    boxShadow:'0 2px 12px rgba(1,58,71,.08)',
-    overflow:'hidden'
+  const inp = {
+    width:'100%',padding:'9px 12px',
+    border:'1.5px solid #DCEAEC',borderRadius:'8px',
+    fontSize:'.9rem',color:'#12333A',
+    background:'white',boxSizing:'border-box'
   }
   const lbl = {
-    fontSize:'.78rem', fontWeight:'700', color:'#12333A',
-    display:'block', marginBottom:'4px',
-    textTransform:'uppercase', letterSpacing:'.5px'
-  }
-  const inp = {
-    width:'100%', padding:'9px 12px',
-    border:'1.5px solid #DCEAEC', borderRadius:'8px',
-    fontSize:'.9rem', color:'#12333A', background:'white',
-    boxSizing:'border-box'
+    fontSize:'.78rem',fontWeight:'700',color:'#12333A',
+    display:'block',marginBottom:'4px'
   }
 
   return (
-    <div style={{ display:'flex', minHeight:'100vh' }}>
-
+    <div style={{display:'flex',minHeight:'100vh'}}>
       <Sidebar open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)} />
-      {sidebarOpen && (
-        <div onClick={() => setSidebarOpen(false)}
-          style={{
-            position:'fixed', inset:0,
-            background:'rgba(0,0,0,.4)', zIndex:99
-          }}
-        />
+        onClose={()=>setSidebarOpen(false)}/>
+      {sidebarOpen&&(
+        <div onClick={()=>setSidebarOpen(false)}
+          style={{position:'fixed',inset:0,
+            background:'rgba(0,0,0,.4)',zIndex:99}}/>
       )}
 
-     <div className="page-main">
-        <Topbar
-          title="Medicine Manager"
-          onMenuToggle={() => setSidebarOpen(s => !s)}
-        >
+      <div className="page-main">
+        <Topbar title="Medicine Manager"
+          onMenuToggle={()=>setSidebarOpen(s=>!s)}>
           <button onClick={openAdd} style={{
-            background:'#02C39A', color:'#012B35',
-            border:'none', borderRadius:'8px',
-            padding:'8px 16px', fontSize:'.85rem',
-            fontWeight:'700', cursor:'pointer'
+            background:'#02C39A',color:'#012B35',
+            border:'none',borderRadius:'8px',
+            padding:'8px 16px',fontSize:'.85rem',
+            fontWeight:'700',cursor:'pointer'
           }}>
             + Add Medicine
           </button>
         </Topbar>
 
-        <div style={{ padding:'24px' }}>
+        <div style={{padding:'16px'}}>
 
           {/* STATS */}
           <div style={{
             display:'grid',
             gridTemplateColumns:'repeat(3,1fr)',
-gap:'10px', marginBottom:'16px',
-'@media(maxWidth:768px)': {
-  gridTemplateColumns:'1fr'
-}
+            gap:'12px',marginBottom:'20px'
           }}>
             {[
-              { label:'Total Medicines',
-                value: medicines?.length || 0,
-                color:'#028090' },
-              { label:'Categories',
-                value: [...new Set(
+              {label:'Total Medicines',
+                value:medicines?.length||0,color:'#028090'},
+              {label:'Categories',
+                value:[...new Set(
                   medicines?.map(m=>m.category)||[]
-                )].length,
-                color:'#02C39A' },
-              { label:'Showing Now',
-                value: filtered.length,
-                color:'#013A47' },
-            ].map(s => (
+                )].length,color:'#02C39A'},
+              {label:'Showing Now',
+                value:filtered.length,color:'#013A47'},
+            ].map(s=>(
               <div key={s.label} style={{
-                background:'white', borderRadius:'10px',
-                padding:'16px',
+                background:'white',borderRadius:'10px',
+                padding:'14px',
                 boxShadow:'0 2px 12px rgba(1,58,71,.08)'
               }}>
-                <div style={{
-                  fontSize:'.75rem', fontWeight:'700',
-                  color:'#5B7C85', textTransform:'uppercase',
-                  letterSpacing:'.5px', marginBottom:'6px'
-                }}>
+                <div style={{fontSize:'.72rem',fontWeight:'700',
+                  color:'#5B7C85',textTransform:'uppercase',
+                  letterSpacing:'.5px',marginBottom:'4px'}}>
                   {s.label}
                 </div>
-                <div style={{
-                  fontSize:'2rem', fontWeight:'700',
-                  color: s.color, lineHeight:1
-                }}>
+                <div style={{fontSize:'1.8rem',fontWeight:'700',
+                  color:s.color,lineHeight:1}}>
                   {s.value}
                 </div>
               </div>
             ))}
           </div>
 
-          {/* SEARCH + FILTERS */}
+          {/* FILTERS */}
           <div style={{
-            display:'flex', gap:'10px',
-            flexWrap:'wrap', marginBottom:'16px'
+            display:'flex',gap:'10px',
+            flexWrap:'wrap',marginBottom:'14px'
           }}>
-            <input
-              type="text"
+            <input type="text"
               placeholder="🔍 Search medicines..."
               value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{
-                ...inp, flex:1,
-                minWidth:'200px', maxWidth:'320px'
-              }}
-            />
-            <select
-              value={catFilter}
-              onChange={e => setCatFilter(e.target.value)}
-              style={{ ...inp, width:'auto' }}
-            >
+              onChange={e=>setSearch(e.target.value)}
+              style={{...inp,flex:1,
+                minWidth:'180px',maxWidth:'300px'}}/>
+            <select value={catFilter}
+              onChange={e=>setCatFilter(e.target.value)}
+              style={{...inp,width:'auto'}}>
               <option value="">All Categories</option>
-              {CATEGORIES.map(c =>
+              {CATEGORIES.map(c=>
                 <option key={c} value={c}>{c}</option>
               )}
             </select>
-            <select
-              value={typeFilter}
-              onChange={e => setTypeFilter(e.target.value)}
-              style={{ ...inp, width:'auto' }}
-            >
+            <select value={typeFilter}
+              onChange={e=>setTypeFilter(e.target.value)}
+              style={{...inp,width:'auto'}}>
               <option value="">All Types</option>
-              {TYPES.map(t =>
+              {TYPES.map(t=>
                 <option key={t} value={t}>{t}</option>
               )}
             </select>
-            {(search||catFilter||typeFilter) && (
-              <button
-                onClick={() => {
-                  setSearch('')
-                  setCatFilter('')
-                  setTypeFilter('')
-                }}
-                style={{
-                  background:'none',
-                  border:'1.5px solid #DCEAEC',
-                  borderRadius:'8px',
-                  padding:'8px 14px',
-                  fontSize:'.85rem',
-                  color:'#5B7C85', cursor:'pointer'
-                }}
-              >
-                Clear filters
+            {(search||catFilter||typeFilter)&&(
+              <button onClick={()=>{
+                setSearch('');setCatFilter('');setTypeFilter('')
+              }} style={{
+                background:'none',
+                border:'1.5px solid #DCEAEC',
+                borderRadius:'8px',padding:'8px 14px',
+                fontSize:'.83rem',color:'#5B7C85',cursor:'pointer'
+              }}>
+                Clear
               </button>
             )}
           </div>
 
           {/* TABLE */}
-          <div style={{ ...card, marginBottom:'20px' }}>
-            {filtered.length === 0 ? (
+          <div style={{
+            background:'white',borderRadius:'10px',
+            boxShadow:'0 2px 12px rgba(1,58,71,.08)',
+            overflow:'hidden',marginBottom:'16px'
+          }}>
+            {filtered.length===0?(
               <div style={{
-                textAlign:'center', padding:'48px',
-                color:'#5B7C85'
+                textAlign:'center',padding:'48px',color:'#5B7C85'
               }}>
-                <div style={{ fontSize:'2.5rem', marginBottom:'12px' }}>
+                <div style={{fontSize:'2.5rem',marginBottom:'12px'}}>
                   💊
                 </div>
-                <p style={{ fontWeight:'600', marginBottom:'6px' }}>
+                <p style={{fontWeight:'600',margin:0}}>
                   {search||catFilter||typeFilter
-                    ? 'No medicines match your filters'
-                    : 'No medicines yet'}
+                    ?'No medicines match filters'
+                    :'No medicines yet'}
                 </p>
-                <p style={{ fontSize:'.85rem' }}>
-                  {search||catFilter||typeFilter
-                    ? 'Try changing your search'
-                    : 'Click "+ Add Medicine" to build your list'}
-                </p>
+                {!search&&!catFilter&&!typeFilter&&(
+                  <p style={{fontSize:'.83rem',marginTop:'6px'}}>
+                    Click "+ Add Medicine" to start
+                  </p>
+                )}
               </div>
-            ) : (
-              <div style={{ overflowX:'auto' }}>
+            ):(
+              <div style={{overflowX:'auto'}}>
                 <table style={{
-                  width:'100%', borderCollapse:'collapse'
+                  width:'100%',borderCollapse:'collapse',
+                  minWidth:'500px'
                 }}>
                   <thead>
-                    <tr style={{ background:'#F4F9F9' }}>
+                    <tr style={{background:'#F4F9F9'}}>
                       {['Medicine','Strength','Type',
-                        'Category','Notes','Actions'
-                       ].map(h => (
+                        'Category','Actions'].map(h=>(
                         <th key={h} style={{
-                          padding:'10px 16px',
-                          textAlign:'left',
-                          fontSize:'.75rem',
-                          fontWeight:'700',
+                          padding:'10px 14px',textAlign:'left',
+                          fontSize:'.72rem',fontWeight:'700',
                           color:'#5B7C85',
                           textTransform:'uppercase',
                           letterSpacing:'.5px',
-                          borderBottom:'1px solid #DCEAEC',
-                          whiteSpace:'nowrap'
+                          borderBottom:'1px solid #DCEAEC'
                         }}>
                           {h}
                         </th>
@@ -331,103 +273,72 @@ gap:'10px', marginBottom:'16px',
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((med, i) => (
-                      <tr key={med.id}
-                        style={{
-                          borderBottom:
-                            i < filtered.length-1
-                            ? '1px solid #DCEAEC' : 'none'
-                        }}
-                      >
-                        <td style={{ padding:'12px 16px' }}>
-                          <span style={{
-                            fontWeight:'700',
-                            color:'#12333A',
-                            fontSize:'.9rem'
-                          }}>
-                            {med.name}
-                          </span>
+                    {filtered.map((med,i)=>(
+                      <tr key={med.id} style={{
+                        borderBottom:i<filtered.length-1
+                          ?'1px solid #DCEAEC':'none',
+                        background:i%2===0?'white':'#fafcfc'
+                      }}>
+                        <td style={{
+                          padding:'12px 14px',fontWeight:'700',
+                          color:'#12333A',fontSize:'.88rem'
+                        }}>
+                          {med.name}
                         </td>
                         <td style={{
-                          padding:'12px 16px',
-                          color:'#5B7C85',
-                          fontSize:'.88rem'
+                          padding:'12px 14px',color:'#5B7C85',
+                          fontSize:'.85rem'
                         }}>
-                          {med.strength || '—'}
+                          {med.strength||'—'}
                         </td>
-                        <td style={{ padding:'12px 16px' }}>
+                        <td style={{padding:'12px 14px'}}>
                           <span style={{
                             display:'inline-block',
                             padding:'3px 10px',
-                            borderRadius:'20px',
-                            fontSize:'.75rem',
+                            borderRadius:'20px',fontSize:'.72rem',
                             fontWeight:'700',
                             background:
-                              typeColors[med.type]?.bg || '#F4F4F4',
+                              TYPE_COLORS[med.type]?.bg||'#F4F4F4',
                             color:
-                              typeColors[med.type]?.color || '#555'
+                              TYPE_COLORS[med.type]?.color||'#555'
                           }}>
                             {med.type}
                           </span>
                         </td>
-                        <td style={{ padding:'12px 16px' }}>
+                        <td style={{padding:'12px 14px'}}>
                           <span style={{
                             display:'inline-block',
                             padding:'3px 10px',
-                            borderRadius:'20px',
-                            fontSize:'.75rem',
+                            borderRadius:'20px',fontSize:'.72rem',
                             fontWeight:'600',
-                            background:'#F4F9F9',
-                            color:'#5B7C85'
+                            background:'#F4F9F9',color:'#5B7C85'
                           }}>
-                            {med.category || 'Other'}
+                            {med.category||'Other'}
                           </span>
                         </td>
-                        <td style={{
-                          padding:'12px 16px',
-                          color:'#5B7C85',
-                          fontSize:'.82rem',
-                          maxWidth:'180px',
-                          overflow:'hidden',
-                          textOverflow:'ellipsis',
-                          whiteSpace:'nowrap'
-                        }}>
-                          {med.notes || '—'}
-                        </td>
-                        <td style={{ padding:'12px 16px' }}>
-                          <div style={{
-                            display:'flex', gap:'6px'
-                          }}>
-                            <button
-                              onClick={() => openEdit(med)}
+                        <td style={{padding:'12px 14px'}}>
+                          <div style={{display:'flex',gap:'6px'}}>
+                            <button onClick={()=>openEdit(med)}
                               style={{
                                 background:'#E8F4FE',
-                                color:'#1a5fa6',
-                                border:'none',
+                                color:'#1a5fa6',border:'none',
                                 borderRadius:'6px',
                                 padding:'5px 10px',
-                                fontSize:'.78rem',
-                                fontWeight:'600',
+                                fontSize:'.75rem',fontWeight:'600',
                                 cursor:'pointer'
-                              }}
-                            >
-                              ✏️ Edit
+                              }}>
+                              ✏️
                             </button>
                             <button
-                              onClick={() =>
-                                setDeleteConfirm(med.id)
-                              }
+                              onClick={()=>setDeleteConfirm(med.id)}
                               style={{
                                 background:'#FFE8E8',
-                                color:'#c0392b',
-                                border:'none',
+                                color:'#c0392b',border:'none',
                                 borderRadius:'6px',
                                 padding:'5px 10px',
-                                fontSize:'.78rem',
-                                fontWeight:'600',
+                                fontSize:'.75rem',fontWeight:'600',
                                 cursor:'pointer'
-                              }}
-                            >
+                              }}>
                               🗑
                             </button>
                           </div>
@@ -442,251 +353,157 @@ gap:'10px', marginBottom:'16px',
 
           {/* BULK ADD */}
           <div style={{
-            background:'white', borderRadius:'10px',
+            background:'white',borderRadius:'10px',
             boxShadow:'0 2px 12px rgba(1,58,71,.08)',
-            padding:'20px'
+            padding:'16px'
           }}>
             <div style={{
-              display:'flex',
-              justifyContent:'space-between',
+              display:'flex',justifyContent:'space-between',
               alignItems:'center',
-              marginBottom: showBulk ? '16px' : '0'
+              marginBottom:showBulk?'14px':'0'
             }}>
               <div>
-                <p style={{
-                  fontWeight:'700', color:'#12333A',
-                  fontSize:'.9rem', margin:0
-                }}>
+                <p style={{fontWeight:'700',color:'#12333A',
+                  fontSize:'.9rem',margin:0}}>
                   📋 Bulk Add Medicines
                 </p>
-                <p style={{
-                  color:'#5B7C85', fontSize:'.8rem',
-                  margin:'4px 0 0 0'
-                }}>
-                  Add multiple medicines at once
+                <p style={{color:'#5B7C85',fontSize:'.78rem',
+                  margin:'3px 0 0 0'}}>
+                  Add multiple at once
                 </p>
               </div>
-              <button
-                onClick={() => setShowBulk(s => !s)}
+              <button onClick={()=>setShowBulk(s=>!s)}
                 style={{
                   background:'none',
                   border:'1.5px solid #DCEAEC',
-                  borderRadius:'8px',
-                  padding:'7px 14px',
-                  fontSize:'.83rem',
-                  color:'#028090',
-                  fontWeight:'600',
-                  cursor:'pointer'
-                }}
-              >
-                {showBulk ? 'Hide' : 'Show'}
+                  borderRadius:'8px',padding:'7px 14px',
+                  fontSize:'.83rem',color:'#028090',
+                  fontWeight:'600',cursor:'pointer'
+                }}>
+                {showBulk?'Hide':'Show'}
               </button>
             </div>
-
-            {showBulk && (
+            {showBulk&&(
               <>
-                <p style={{
-                  color:'#5B7C85', fontSize:'.82rem',
-                  marginBottom:'8px'
-                }}>
-                  One medicine per line. Format: 
-                  <strong> Name, Strength, Type, Category</strong>
-                  <br/>Example: Amoxicillin, 500mg, Capsule, Antibiotic
+                <p style={{color:'#5B7C85',fontSize:'.8rem',
+                  marginBottom:'8px'}}>
+                  One per line: <strong>Name, Strength, Type, Category</strong>
                 </p>
-                <textarea
-                  value={bulkText}
-                  onChange={e => setBulkText(e.target.value)}
+                <textarea value={bulkText}
+                  onChange={e=>setBulkText(e.target.value)}
                   placeholder={
-                    `Amoxicillin, 500mg, Capsule, Antibiotic\n` +
-                    `Paracetamol, 650mg, Tablet, Painkiller\n` +
-                    `Omeprazole, 20mg, Capsule, Antacid`
+                    'Amoxicillin, 500mg, Capsule, Antibiotic\n'+
+                    'Paracetamol, 650mg, Tablet, Painkiller'
                   }
                   style={{
-                    ...inp,
-                    minHeight:'120px',
-                    resize:'vertical',
-                    marginBottom:'12px',
-                    fontFamily:'monospace',
-                    fontSize:'.85rem'
-                  }}
-                />
-                <button
-                  onClick={handleBulkAdd}
-                  style={{
-                    background:'#028090', color:'white',
-                    border:'none', borderRadius:'8px',
-                    padding:'9px 20px', fontSize:'.88rem',
-                    fontWeight:'700', cursor:'pointer'
-                  }}
-                >
-                  Add All Medicines
+                    ...inp,minHeight:'100px',
+                    resize:'vertical',marginBottom:'10px',
+                    fontFamily:'monospace',fontSize:'.83rem'
+                  }}/>
+                <button onClick={handleBulkAdd} style={{
+                  background:'#028090',color:'white',
+                  border:'none',borderRadius:'8px',
+                  padding:'9px 20px',fontSize:'.88rem',
+                  fontWeight:'700',cursor:'pointer'
+                }}>
+                  Add All
                 </button>
               </>
             )}
           </div>
-
         </div>
       </div>
 
-      {/* ADD / EDIT MODAL */}
-      {showModal && (
-        <div
-          onClick={closeModal}
-          style={{
-            position:'fixed', inset:0,
-            background:'rgba(0,0,0,.5)',
-            zIndex:1000,
-            display:'flex',
-            alignItems:'center',
-            justifyContent:'center',
-            padding:'16px'
-          }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              background:'white',
-              borderRadius:'14px',
-              padding:'28px',
-              width:'100%',
-              maxWidth:'440px',
-              boxShadow:'0 20px 60px rgba(0,0,0,.25)'
-            }}
-          >
+      {/* ADD/EDIT MODAL */}
+      {showModal&&(
+        <div onClick={closeModal} style={{
+          position:'fixed',inset:0,
+          background:'rgba(0,0,0,.5)',zIndex:1000,
+          display:'flex',alignItems:'center',
+          justifyContent:'center',padding:'16px'
+        }}>
+          <div onClick={e=>e.stopPropagation()} style={{
+            background:'white',borderRadius:'14px',
+            padding:'24px',width:'100%',maxWidth:'420px',
+            boxShadow:'0 20px 60px rgba(0,0,0,.25)'
+          }}>
             <div style={{
-              display:'flex',
-              justifyContent:'space-between',
-              alignItems:'center',
-              marginBottom:'20px'
+              display:'flex',justifyContent:'space-between',
+              alignItems:'center',marginBottom:'18px'
             }}>
-              <h2 style={{
-                fontSize:'1.1rem', fontWeight:'700',
-                color:'#12333A', margin:0
-              }}>
-                {editId ? '✏️ Edit Medicine' : '+ Add Medicine'}
+              <h2 style={{fontSize:'1rem',fontWeight:'700',
+                color:'#12333A',margin:0}}>
+                {editId?'✏️ Edit Medicine':'+ Add Medicine'}
               </h2>
-              <button
-                onClick={closeModal}
-                style={{
-                  background:'none', border:'none',
-                  fontSize:'1.4rem', cursor:'pointer',
-                  color:'#5B7C85', lineHeight:1
-                }}
-              >
+              <button onClick={closeModal} style={{
+                background:'none',border:'none',
+                fontSize:'1.4rem',cursor:'pointer',
+                color:'#5B7C85',lineHeight:1
+              }}>
                 ×
               </button>
             </div>
-
-            <div style={{ marginBottom:'14px' }}>
-              <label style={lbl}>
-                Medicine Name *
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Amoxicillin"
-                value={form.name}
-                onChange={e =>
-                  setForm({ ...form, name: e.target.value })
-                }
-                style={{
-                  ...inp,
-                  borderColor: form.name ? '#DCEAEC' : '#028090'
-                }}
-                autoFocus
-              />
+            <div style={{marginBottom:'12px'}}>
+              <label style={lbl}>Medicine Name *</label>
+              <input type="text" placeholder="e.g. Amoxicillin"
+                value={form.name} autoFocus
+                onChange={e=>setForm({...form,name:e.target.value})}
+                style={{...inp,
+                  borderColor:form.name?'#DCEAEC':'#028090'}}/>
             </div>
-
-            <div style={{ marginBottom:'14px' }}>
+            <div style={{marginBottom:'12px'}}>
               <label style={lbl}>Strength</label>
-              <input
-                type="text"
-                placeholder="e.g. 500mg, 10ml, 0.05%"
+              <input type="text" placeholder="e.g. 500mg"
                 value={form.strength}
-                onChange={e =>
-                  setForm({ ...form, strength: e.target.value })
-                }
-                style={inp}
-              />
+                onChange={e=>setForm({...form,
+                  strength:e.target.value})}
+                style={inp}/>
             </div>
-
-            <div style={{
-              display:'grid',
+            <div style={{display:'grid',
               gridTemplateColumns:'1fr 1fr',
-              gap:'12px',
-              marginBottom:'14px'
-            }}>
+              gap:'10px',marginBottom:'12px'}}>
               <div>
                 <label style={lbl}>Type</label>
-                <select
-                  value={form.type}
-                  onChange={e =>
-                    setForm({ ...form, type: e.target.value })
-                  }
-                  style={inp}
-                >
-                  {TYPES.map(t =>
+                <select value={form.type}
+                  onChange={e=>setForm({...form,type:e.target.value})}
+                  style={inp}>
+                  {TYPES.map(t=>
                     <option key={t} value={t}>{t}</option>
                   )}
                 </select>
               </div>
               <div>
                 <label style={lbl}>Category</label>
-                <select
-                  value={form.category}
-                  onChange={e =>
-                    setForm({ ...form, category: e.target.value })
-                  }
-                  style={inp}
-                >
-                  {CATEGORIES.map(c =>
+                <select value={form.category}
+                  onChange={e=>setForm({...form,
+                    category:e.target.value})}
+                  style={inp}>
+                  {CATEGORIES.map(c=>
                     <option key={c} value={c}>{c}</option>
                   )}
                 </select>
               </div>
             </div>
-
-            <div style={{ marginBottom:'20px' }}>
-              <label style={lbl}>
-                Notes (optional)
-              </label>
-              <textarea
-                placeholder="e.g. Take with food, avoid alcohol"
+            <div style={{marginBottom:'18px'}}>
+              <label style={lbl}>Notes (optional)</label>
+              <textarea placeholder="e.g. Take with food"
                 value={form.notes}
-                onChange={e =>
-                  setForm({ ...form, notes: e.target.value })
-                }
-                style={{
-                  ...inp,
-                  minHeight:'70px',
-                  resize:'vertical'
-                }}
-              />
+                onChange={e=>setForm({...form,notes:e.target.value})}
+                style={{...inp,minHeight:'60px',resize:'vertical'}}/>
             </div>
-
-            <div style={{
-              display:'flex', gap:'10px'
-            }}>
-              <button
-                onClick={handleSave}
-                style={{
-                  flex:1, background:'#028090',
-                  color:'white', border:'none',
-                  borderRadius:'8px', padding:'11px',
-                  fontSize:'.95rem', fontWeight:'700',
-                  cursor:'pointer'
-                }}
-              >
-                {editId ? 'Save Changes' : 'Add Medicine'}
+            <div style={{display:'flex',gap:'10px'}}>
+              <button onClick={handleSave} style={{
+                flex:1,background:'#028090',color:'white',
+                border:'none',borderRadius:'8px',padding:'11px',
+                fontSize:'.92rem',fontWeight:'700',cursor:'pointer'
+              }}>
+                {editId?'Save Changes':'Add Medicine'}
               </button>
-              <button
-                onClick={closeModal}
-                style={{
-                  background:'white', color:'#5B7C85',
-                  border:'1.5px solid #DCEAEC',
-                  borderRadius:'8px', padding:'11px 18px',
-                  fontSize:'.95rem', cursor:'pointer'
-                }}
-              >
+              <button onClick={closeModal} style={{
+                background:'white',color:'#5B7C85',
+                border:'1.5px solid #DCEAEC',borderRadius:'8px',
+                padding:'11px 18px',fontSize:'.92rem',cursor:'pointer'
+              }}>
                 Cancel
               </button>
             </div>
@@ -695,70 +512,46 @@ gap:'10px', marginBottom:'16px',
       )}
 
       {/* DELETE CONFIRM */}
-      {deleteConfirm && (
-        <div
-          onClick={() => setDeleteConfirm(null)}
-          style={{
-            position:'fixed', inset:0,
-            background:'rgba(0,0,0,.5)',
-            zIndex:1000,
-            display:'flex',
-            alignItems:'center',
-            justifyContent:'center',
-            padding:'16px'
-          }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              background:'white', borderRadius:'14px',
-              padding:'28px', width:'100%', maxWidth:'360px',
-              textAlign:'center'
-            }}
-          >
-            <div style={{
-              fontSize:'2.5rem', marginBottom:'12px'
-            }}>
-              🗑️
-            </div>
-            <h3 style={{
-              fontSize:'1rem', fontWeight:'700',
-              color:'#12333A', marginBottom:'8px'
-            }}>
+      {deleteConfirm&&(
+        <div onClick={()=>setDeleteConfirm(null)} style={{
+          position:'fixed',inset:0,
+          background:'rgba(0,0,0,.5)',zIndex:1000,
+          display:'flex',alignItems:'center',
+          justifyContent:'center',padding:'16px'
+        }}>
+          <div onClick={e=>e.stopPropagation()} style={{
+            background:'white',borderRadius:'14px',
+            padding:'28px',width:'100%',maxWidth:'340px',
+            textAlign:'center'
+          }}>
+            <div style={{fontSize:'2.5rem',marginBottom:'12px'}}>🗑️</div>
+            <h3 style={{fontSize:'1rem',fontWeight:'700',
+              color:'#12333A',marginBottom:'8px'}}>
               Remove this medicine?
             </h3>
-            <p style={{
-              color:'#5B7C85', fontSize:'.85rem',
-              marginBottom:'20px'
-            }}>
-              It will be removed from your list.
+            <p style={{color:'#5B7C85',fontSize:'.85rem',
+              marginBottom:'20px'}}>
               Past prescriptions using it are not affected.
             </p>
-            <div style={{
-              display:'flex', gap:'10px',
-              justifyContent:'center'
-            }}>
+            <div style={{display:'flex',gap:'10px',
+              justifyContent:'center'}}>
               <button
-                onClick={() => handleDelete(deleteConfirm)}
+                onClick={()=>handleDelete(deleteConfirm)}
                 style={{
-                  background:'#E53E3E', color:'white',
-                  border:'none', borderRadius:'8px',
-                  padding:'10px 20px', fontSize:'.9rem',
-                  fontWeight:'700', cursor:'pointer'
-                }}
-              >
+                  background:'#E53E3E',color:'white',
+                  border:'none',borderRadius:'8px',
+                  padding:'10px 20px',fontSize:'.9rem',
+                  fontWeight:'700',cursor:'pointer'
+                }}>
                 Yes, Remove
               </button>
-              <button
-                onClick={() => setDeleteConfirm(null)}
+              <button onClick={()=>setDeleteConfirm(null)}
                 style={{
-                  background:'white', color:'#5B7C85',
+                  background:'white',color:'#5B7C85',
                   border:'1.5px solid #DCEAEC',
-                  borderRadius:'8px',
-                  padding:'10px 20px', fontSize:'.9rem',
-                  cursor:'pointer'
-                }}
-              >
+                  borderRadius:'8px',padding:'10px 20px',
+                  fontSize:'.9rem',cursor:'pointer'
+                }}>
                 Cancel
               </button>
             </div>
@@ -766,15 +559,13 @@ gap:'10px', marginBottom:'16px',
         </div>
       )}
 
-      {/* TOAST */}
-      {toast && (
+      {toast&&(
         <div style={{
-          position:'fixed', bottom:'24px', right:'24px',
-          background:'#12333A', color:'white',
-          padding:'12px 20px', borderRadius:'10px',
-          fontSize:'.88rem', fontWeight:'500',
-          boxShadow:'0 8px 24px rgba(0,0,0,.2)',
-          zIndex:9999
+          position:'fixed',bottom:'24px',right:'24px',
+          background:'#12333A',color:'white',
+          padding:'12px 20px',borderRadius:'10px',
+          fontSize:'.88rem',fontWeight:'500',
+          boxShadow:'0 8px 24px rgba(0,0,0,.2)',zIndex:9999
         }}>
           {toast}
         </div>

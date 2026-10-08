@@ -1,317 +1,434 @@
-"use client";
+'use client'
+export const dynamic = 'force-dynamic'
 
-import { useMemo } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import Topbar from "../../components/Topbar";
-import { useApp } from "../../lib/AppContext";
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Sidebar from '../../components/Sidebar'
+import Topbar from '../../components/Topbar'
+import { useApp } from '../../lib/AppContext'
 
-const STATUS_STYLES = {
-  confirmed: { bg: "#E6F7F1", text: "#1a7a50" },
-  pending: { bg: "#FFF4E5", text: "#B06000" },
-  completed: { bg: "#E8F4FE", text: "#1a5fa6" },
-  cancelled: { bg: "#FFE8E8", text: "#c0392b" },
-};
+const today = () => new Date().toISOString().slice(0, 10)
 
-function getTodayDateStr() {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+const fmtTime = t => {
+  if (!t) return ''
+  const [h, m] = t.split(':')
+  const hr = +h
+  return `${hr > 12 ? hr - 12 : hr || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`
 }
 
-function formatDisplayDate(dateStr) {
-  const d = new Date(dateStr + "T00:00:00");
-  return new Intl.DateTimeFormat("en-IN", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(d);
+const fmtDate = d => {
+  if (!d) return ''
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-GB', {
+    weekday: 'long', day: 'numeric', month: 'long'
+  })
 }
 
-function formatShortDate(dateStr) {
-  const d = new Date(dateStr + "T00:00:00");
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(d);
-}
-
-function parseTimeToMinutes(timeStr) {
-  const match = timeStr.match(/^(\d{1,2}):(\d{2})\s?(AM|PM)$/i);
-  if (!match) return 0;
-  let h = parseInt(match[1], 10);
-  const m = parseInt(match[2], 10);
-  const ap = match[3].toUpperCase();
-  if (ap === "PM" && h !== 12) h += 12;
-  if (ap === "AM" && h === 12) h = 0;
-  return h * 60 + m;
-}
-
-function StatCard({ label, value, highlight }) {
-  return (
-    <div
-      className={`rounded-[10px] shadow-sm px-5 py-5 ${
-        highlight ? "bg-[#013A47]" : "bg-white"
-      }`}
-    >
-      <p
-        className={`text-[11px] font-semibold uppercase tracking-wider ${
-          highlight ? "text-white/50" : "text-[#5B7C85]"
-        }`}
-      >
-        {label}
-      </p>
-      <p
-        className={`mt-2 text-2xl sm:text-3xl font-bold ${
-          highlight ? "text-[#02C39A]" : "text-[#12333A]"
-        }`}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function StatusBadge({ status }) {
-  const style = STATUS_STYLES[status] || STATUS_STYLES.pending;
-  const cap = status.charAt(0).toUpperCase() + status.slice(1);
-  return (
-    <span
-      className="inline-flex h-7 items-center rounded-full px-3 text-xs font-semibold"
-      style={{ backgroundColor: style.bg, color: style.text }}
-    >
-      {cap}
-    </span>
-  );
-}
-
-function TimeBadge({ time }) {
-  const match = time.match(/^(\d{1,2}):(\d{2})\s?(AM|PM)$/i);
-  const hhmm = match ? `${match[1]}:${match[2]}` : time;
-  const ap = match ? match[3].toUpperCase() : "";
-  return (
-    <div className="flex h-14 w-16 shrink-0 flex-col items-center justify-center rounded-lg bg-[#028090] text-white">
-      <span className="text-sm font-bold leading-none">{hhmm}</span>
-      <span className="mt-1 text-[10px] font-semibold leading-none tracking-wider">
-        {ap}
-      </span>
-    </div>
-  );
+const STATUS = {
+  confirmed: { bg: '#E6F7F1', color: '#1a7a50' },
+  pending:   { bg: '#FFF4E5', color: '#B06000' },
+  completed: { bg: '#E8F4FE', color: '#1a5fa6' },
+  cancelled: { bg: '#FFE8E8', color: '#c0392b' },
 }
 
 export default function DashboardPage() {
-  const { bookings, setBookings, setIsSidebarOpen } = useApp();
-  const router = useRouter();
-  const today = getTodayDateStr();
+  const router = useRouter()
+  const { bookings, setBookings } = useApp()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [toast,       setToast]       = useState('')
 
-  const todayBookings = useMemo(
-    () =>
-      bookings
-        .filter((b) => b.date === today)
-        .sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time)),
-    [bookings, today],
-  );
+  const showToast = msg => {
+    setToast(msg)
+    setTimeout(() => setToast(''), 2500)
+  }
 
-  const stats = useMemo(() => {
-    const todays = bookings.filter((b) => b.date === today);
-    const confirmed = todays.filter((b) => b.status === "confirmed").length;
-    const pending = todays.filter((b) => b.status === "pending").length;
-    const revenue = todays
-      .filter((b) => b.status === "completed")
-      .reduce((sum, b) => sum + (b.price || 0), 0);
-    return {
-      total: todays.length,
-      confirmed,
-      pending,
-      revenue: `₹${revenue.toLocaleString("en-IN")}`,
-    };
-  }, [bookings, today]);
+  const t = today()
+  const todayBk = (bookings || [])
+    .filter(b => b.date === t)
+    .sort((a, b) => a.time.localeCompare(b.time))
 
-  const recentBookings = useMemo(() => {
-    const sorted = [...bookings].sort((a, b) => {
-      const da = new Date(a.date + "T00:00:00").getTime();
-      const db = new Date(b.date + "T00:00:00").getTime();
-      if (db !== da) return db - da;
-      return parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time);
-    });
-    return sorted.slice(0, 5);
-  }, [bookings]);
+  const confirmed = todayBk.filter(b => b.status === 'confirmed').length
+  const pending   = todayBk.filter(b => b.status === 'pending').length
+  const revenue   = todayBk
+    .filter(b => b.status === 'completed')
+    .reduce((s, b) => s + (b.price || 0), 0)
 
-  const handleMarkDone = (id) => {
-    setBookings((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, status: "completed" } : b)),
-    );
-  };
+  const recent = [...(bookings || [])]
+    .sort((a, b) =>
+      (b.date + b.time).localeCompare(a.date + a.time)
+    )
+    .slice(0, 5)
 
-  const handleCancel = (id, patientName) => {
-    if (window.confirm(`Cancel booking for ${patientName}?`)) {
-      setBookings((prev) =>
-        prev.map((b) => (b.id === id ? { ...b, status: "cancelled" } : b)),
-      );
-    }
-  };
+  const markDone = id => {
+    setBookings((bookings || []).map(b =>
+      b.id === id ? { ...b, status: 'completed' } : b
+    ))
+    showToast('✅ Marked as completed')
+  }
 
-  const handleConsult = (booking) => {
-    const params = new URLSearchParams({
-      patient: booking.patientName,
-      bookingId: booking.id,
-    });
-    router.push(`/consultation?${params.toString()}`);
-  };
-
-  const handleRowClick = (patientName) => {
-    router.push(`/patients?filter=${encodeURIComponent(patientName)}`);
-  };
-
-  const todayDisplay = formatDisplayDate(today);
+  const cancelBk = id => {
+    if (!confirm('Cancel this appointment?')) return
+    setBookings((bookings || []).map(b =>
+      b.id === id ? { ...b, status: 'cancelled' } : b
+    ))
+    showToast('❌ Appointment cancelled')
+  }
 
   return (
-    <>
-      <Topbar
-        title="Dashboard"
-        onMenuToggle={() => setIsSidebarOpen((open) => !open)}
-      />
-      <main className="flex-1 overflow-y-auto bg-[#F4F9F9] p-4 sm:p-6">
-        <div className="grid grid-cols-2 gap-4 mb-6 lg:grid-cols-4">
-          <StatCard label="Today's Appointments" value={stats.total} />
-          <StatCard label="Confirmed" value={stats.confirmed} />
-          <StatCard label="Pending" value={stats.pending} />
-          <StatCard label="Revenue Today" value={stats.revenue} highlight />
-        </div>
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
+      <Sidebar open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)} />
+      {sidebarOpen && (
+        <div onClick={() => setSidebarOpen(false)}
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,.4)', zIndex: 99
+          }} />
+      )}
 
-        <section className="mb-6">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold text-[#12333A]">
-                Today&apos;s Schedule
-              </h2>
-              <p className="text-sm text-[#5B7C85]">{todayDisplay}</p>
-            </div>
-            <Link
-              href="/bookings?new=1"
-              className="inline-flex h-9 items-center rounded-lg bg-[#02C39A] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#02B08B]"
-            >
-              + Add Booking
-            </Link>
+      <div className="page-main">
+        <Topbar
+          title="Dashboard"
+          onMenuToggle={() => setSidebarOpen(s => !s)}
+        >
+          <button
+            onClick={() => router.push('/bookings')}
+            style={{
+              background: '#02C39A', color: '#012B35',
+              border: 'none', borderRadius: '8px',
+              padding: '8px 16px', fontSize: '.85rem',
+              fontWeight: '700', cursor: 'pointer'
+            }}
+          >
+            + Add Booking
+          </button>
+        </Topbar>
+
+        <div style={{ padding: '16px' }}>
+
+          {/* STAT CARDS */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4,1fr)',
+            gap: '12px', marginBottom: '20px'
+          }}
+            className="stats-grid"
+          >
+            {[
+              { label: "Today's Appointments",
+                value: todayBk.length,
+                sub: `${confirmed} confirmed · ${pending} pending`,
+                dark: false },
+              { label: 'Confirmed',
+                value: confirmed,
+                sub: 'Ready for today',
+                dark: false },
+              { label: 'Pending',
+                value: pending,
+                sub: 'Awaiting confirmation',
+                dark: false },
+              { label: "Today's Revenue",
+                value: `₹${revenue.toLocaleString()}`,
+                sub: 'From completed visits',
+                dark: true },
+            ].map(s => (
+              <div key={s.label} style={{
+                background: s.dark ? '#013A47' : 'white',
+                borderRadius: '10px', padding: '16px',
+                boxShadow: '0 2px 12px rgba(1,58,71,.08)'
+              }}>
+                <div style={{
+                  fontSize: '.72rem', fontWeight: '700',
+                  color: s.dark
+                    ? 'rgba(255,255,255,.5)' : '#5B7C85',
+                  textTransform: 'uppercase',
+                  letterSpacing: '.5px', marginBottom: '6px'
+                }}>
+                  {s.label}
+                </div>
+                <div style={{
+                  fontSize: '2rem', fontWeight: '700',
+                  color: s.dark ? '#02C39A' : '#12333A',
+                  lineHeight: 1
+                }}>
+                  {s.value}
+                </div>
+                <div style={{
+                  fontSize: '.75rem', marginTop: '4px',
+                  color: s.dark
+                    ? 'rgba(255,255,255,.4)' : '#5B7C85'
+                }}>
+                  {s.sub}
+                </div>
+              </div>
+            ))}
           </div>
 
-          {todayBookings.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-[10px] bg-white py-16 shadow-sm">
-              <span className="mb-3 text-5xl" aria-hidden="true">
-                📅
-              </span>
-              <p className="text-base font-medium text-[#12333A]">
+          {/* TODAY'S SCHEDULE */}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between',
+            alignItems: 'center', marginBottom: '12px',
+            flexWrap: 'wrap', gap: '8px'
+          }}>
+            <h2 style={{
+              fontSize: '1rem', fontWeight: '700',
+              color: '#12333A', margin: 0
+            }}>
+              📅 Today's Schedule — {fmtDate(t)}
+            </h2>
+            <button
+              onClick={() => router.push('/bookings')}
+              style={{
+                background: 'none', color: '#028090',
+                border: '1.5px solid #028090',
+                borderRadius: '8px', padding: '6px 14px',
+                fontSize: '.82rem', fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              + Add Booking
+            </button>
+          </div>
+
+          {todayBk.length === 0 ? (
+            <div style={{
+              background: 'white', borderRadius: '12px',
+              padding: '48px', textAlign: 'center',
+              color: '#5B7C85',
+              boxShadow: '0 2px 12px rgba(1,58,71,.08)'
+            }}>
+              <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>
+                🌙
+              </div>
+              <p style={{ fontWeight: '600', margin: 0 }}>
                 No appointments today
               </p>
-              <p className="mt-1 text-sm text-[#5B7C85]">
-                Enjoy the quiet, or add a booking to get started.
+              <p style={{ fontSize: '.85rem', marginTop: '6px' }}>
+                Add one or wait for WhatsApp bookings
               </p>
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
-              {todayBookings.map((b) => {
-                const showActions =
-                  b.status === "confirmed" || b.status === "pending";
-                return (
-                  <div
-                    key={b.id}
-                    className="flex flex-col gap-4 rounded-[10px] bg-white p-4 shadow-sm sm:flex-row sm:items-center"
-                  >
-                    <TimeBadge time={b.time} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-bold text-[#12333A]">
-                        {b.patientName}
-                      </p>
-                      <p className="truncate text-sm text-[#5B7C85]">
-                        {b.patientPhone}
-                      </p>
-                      <p className="mt-1 text-xs font-medium text-[#5B7C85]">
-                        {b.service} · ₹{b.price}
-                      </p>
+            <div style={{
+              display: 'flex', flexDirection: 'column', gap: '10px',
+              marginBottom: '24px'
+            }}>
+              {todayBk.map(b => (
+                <div key={b.id} style={{
+                  background: 'white', borderRadius: '12px',
+                  boxShadow: '0 2px 12px rgba(1,58,71,.08)',
+                  padding: '14px 16px',
+                  display: 'flex', alignItems: 'center',
+                  gap: '12px', flexWrap: 'wrap'
+                }}>
+                  {/* Time */}
+                  <div style={{
+                    background: '#F4F9F9', borderRadius: '8px',
+                    padding: '8px 10px', textAlign: 'center',
+                    minWidth: '58px', flexShrink: 0
+                  }}>
+                    <span style={{
+                      fontSize: '.95rem', fontWeight: '700',
+                      color: '#028090', display: 'block'
+                    }}>
+                      {fmtTime(b.time).split(' ')[0]}
+                    </span>
+                    <span style={{
+                      fontSize: '.65rem', color: '#5B7C85'
+                    }}>
+                      {fmtTime(b.time).split(' ')[1]}
+                    </span>
+                  </div>
+
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: '150px' }}>
+                    <div style={{
+                      fontWeight: '700', color: '#12333A',
+                      fontSize: '.95rem'
+                    }}>
+                      {b.patientName}
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <StatusBadge status={b.status} />
-                      {showActions && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => handleMarkDone(b.id)}
-                            className="inline-flex h-8 items-center rounded-lg bg-[#02C39A] px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-[#02B08B]"
-                          >
-                            ✓ Done
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleCancel(b.id, b.patientName)}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#c0392b]/30 text-[#c0392b] transition hover:bg-[#c0392b]/10"
-                            aria-label="Cancel booking"
-                          >
-                            ✕
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleConsult(b)}
-                            className="inline-flex h-8 items-center rounded-lg border border-[#028090]/30 px-3 text-xs font-semibold text-[#028090] transition hover:bg-[#028090]/10"
-                          >
-                            🩺 Consult
-                          </button>
-                        </>
-                      )}
+                    <div style={{
+                      fontSize: '.78rem', color: '#5B7C85',
+                      marginTop: '2px'
+                    }}>
+                      📞 {b.patientPhone} · 🩺 {b.service}
+                      {b.price ? ` · ₹${b.price.toLocaleString()}` : ''}
                     </div>
                   </div>
-                );
-              })}
+
+                  {/* Actions */}
+                  <div style={{
+                    display: 'flex', gap: '6px',
+                    alignItems: 'center', flexWrap: 'wrap',
+                    flexShrink: 0
+                  }}>
+                    <span style={{
+                      padding: '3px 10px', borderRadius: '20px',
+                      fontSize: '.72rem', fontWeight: '700',
+                      background: STATUS[b.status]?.bg || '#F4F9F9',
+                      color: STATUS[b.status]?.color || '#5B7C85'
+                    }}>
+                      {b.status}
+                    </span>
+                    {(b.status === 'confirmed' ||
+                      b.status === 'pending') && (
+                      <>
+                        <button
+                          onClick={() => markDone(b.id)}
+                          style={{
+                            background: '#E6F7F1',
+                            color: '#1a7a50', border: 'none',
+                            borderRadius: '6px',
+                            padding: '5px 10px',
+                            fontSize: '.75rem', fontWeight: '600',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          ✓ Done
+                        </button>
+                        <button
+                          onClick={() => router.push(
+                            `/consultation?patient=${
+                              encodeURIComponent(b.patientName)
+                            }&bookingId=${b.id}`
+                          )}
+                          style={{
+                            background: '#E8F4FE',
+                            color: '#1a5fa6', border: 'none',
+                            borderRadius: '6px',
+                            padding: '5px 10px',
+                            fontSize: '.75rem', fontWeight: '600',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          🩺 Consult
+                        </button>
+                        <button
+                          onClick={() => cancelBk(b.id)}
+                          style={{
+                            background: '#FFE8E8',
+                            color: '#c0392b', border: 'none',
+                            borderRadius: '6px',
+                            padding: '5px 10px',
+                            fontSize: '.75rem', fontWeight: '600',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
-        </section>
 
-        <section>
-          <div className="mb-4">
-            <h2 className="text-lg font-bold text-[#12333A]">Recent Activity</h2>
-            <p className="text-sm text-[#5B7C85]">Latest bookings across all dates</p>
-          </div>
-          <div className="overflow-hidden rounded-[10px] bg-white shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
+          {/* RECENT ACTIVITY */}
+          <h2 style={{
+            fontSize: '1rem', fontWeight: '700',
+            color: '#12333A', marginBottom: '12px'
+          }}>
+            🕐 Recent Activity
+          </h2>
+          <div style={{
+            background: 'white', borderRadius: '12px',
+            boxShadow: '0 2px 12px rgba(1,58,71,.08)',
+            overflow: 'hidden'
+          }}>
+            {recent.length === 0 ? (
+              <div style={{
+                padding: '32px', textAlign: 'center',
+                color: '#5B7C85'
+              }}>
+                No recent activity
+              </div>
+            ) : (
+              <table style={{
+                width: '100%', borderCollapse: 'collapse'
+              }}>
                 <thead>
-                  <tr className="border-b border-[#DCEAEC] text-left text-[11px] font-semibold uppercase tracking-wider text-[#5B7C85]">
-                    <th className="px-5 py-3">Date</th>
-                    <th className="px-5 py-3">Patient</th>
-                    <th className="px-5 py-3">Service</th>
-                    <th className="px-5 py-3">Status</th>
+                  <tr style={{ background: '#F4F9F9' }}>
+                    {['Date','Patient','Service','Status'].map(h => (
+                      <th key={h} style={{
+                        padding: '10px 14px', textAlign: 'left',
+                        fontSize: '.72rem', fontWeight: '700',
+                        color: '#5B7C85',
+                        textTransform: 'uppercase',
+                        letterSpacing: '.5px',
+                        borderBottom: '1px solid #DCEAEC'
+                      }}>
+                        {h}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {recentBookings.map((b) => (
+                  {recent.map((b, i) => (
                     <tr
                       key={b.id}
-                      onClick={() => handleRowClick(b.patientName)}
-                      className="cursor-pointer border-b border-[#DCEAEC]/50 last:border-0 transition hover:bg-[#F4F9F9]"
+                      onClick={() => router.push('/bookings')}
+                      style={{
+                        cursor: 'pointer',
+                        borderBottom: i < recent.length - 1
+                          ? '1px solid #DCEAEC' : 'none'
+                      }}
                     >
-                      <td className="whitespace-nowrap px-5 py-4 font-medium text-[#12333A]">
-                        {formatShortDate(b.date)}
+                      <td style={{
+                        padding: '10px 14px',
+                        fontSize: '.82rem', color: '#5B7C85'
+                      }}>
+                        {new Date(b.date + 'T00:00:00')
+                          .toLocaleDateString('en-GB', {
+                            day: '2-digit', month: 'short'
+                          })}
                       </td>
-                      <td className="whitespace-nowrap px-5 py-4 font-semibold text-[#12333A]">
+                      <td style={{
+                        padding: '10px 14px',
+                        fontSize: '.85rem', fontWeight: '600',
+                        color: '#12333A'
+                      }}>
                         {b.patientName}
                       </td>
-                      <td className="whitespace-nowrap px-5 py-4 text-[#5B7C85]">
+                      <td style={{
+                        padding: '10px 14px',
+                        fontSize: '.82rem', color: '#5B7C85'
+                      }}>
                         {b.service}
                       </td>
-                      <td className="whitespace-nowrap px-5 py-4">
-                        <StatusBadge status={b.status} />
+                      <td style={{ padding: '10px 14px' }}>
+                        <span style={{
+                          padding: '2px 8px',
+                          borderRadius: '20px',
+                          fontSize: '.7rem',
+                          fontWeight: '700',
+                          background:
+                            STATUS[b.status]?.bg || '#F4F9F9',
+                          color:
+                            STATUS[b.status]?.color || '#5B7C85'
+                        }}>
+                          {b.status}
+                        </span>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
+            )}
           </div>
-        </section>
-      </main>
-    </>
-  );
+        </div>
+      </div>
+
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: '24px', right: '24px',
+          background: '#12333A', color: 'white',
+          padding: '12px 20px', borderRadius: '10px',
+          fontSize: '.88rem', fontWeight: '500',
+          boxShadow: '0 8px 24px rgba(0,0,0,.2)', zIndex: 9999
+        }}>
+          {toast}
+        </div>
+      )}
+    </div>
+  )
 }
